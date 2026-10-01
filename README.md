@@ -4,8 +4,8 @@
 
 | Nama | NRP |
 | --- | --- |
-| [Nama Anggota 1] | [NRP] |
-| [Nama Anggota 2] | [NRP] |
+| Ronnin Raditya Putra Purbono | 5027251119 |
+| Keisya Halimah Mulia | 5027251068 |
 
 ## Laporan
 
