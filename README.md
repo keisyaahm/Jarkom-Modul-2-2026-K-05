@@ -838,5 +838,4 @@ Serial yang identik membuktikan `tedd` telah memperoleh salinan zone terbaru dar
 
 ## Kesimpulan Nomor 1–5
 
-Sampai tahap ini, jaringan telah memiliki konfigurasi IP dan gateway yang benar pada seluruh node, NAT melalui `rootkit`, routing internal antar-subnet, DNS master-slave melalui `prab` dan `tedd`, serta hostname dan A record untuk seluruh entitas. Resolver internal juga telah menggunakan urutan `prab`, `tedd`, kemudian `192.168.122.1`, sehingga resolusi domain internal maupun eksternal dapat berjalan sesuai kebutuhan praktikum. Ketentuan bahwa script instalasi dan konfigurasi berada pada `/root` juga diterapkan pada script yang digunakan. :chatgpt-content-reference{index="5"}#   - J a r k o m - M o d u l - 2 - 2 0 2 6 - K - 0 5  
- 
+Sampai tahap ini, jaringan telah memiliki konfigurasi IP dan gateway yang benar pada seluruh node, NAT melalui `rootkit`, routing internal antar-subnet, DNS master-slave melalui `prab` dan `tedd`, serta hostname dan A record untuk seluruh entitas. Resolver internal juga telah menggunakan urutan `prab`, `tedd`, kemudian `192.168.122.1`, sehingga resolusi domain internal maupun eksternal dapat berjalan sesuai kebutuhan praktikum. Ketentuan bahwa script instalasi dan konfigurasi berada pada `/root` juga diterapkan pada script yang digunakan. :chatgpt-content-reference{index="5"}#
