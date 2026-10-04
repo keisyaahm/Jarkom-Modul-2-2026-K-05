@@ -29,6 +29,7 @@
 - [Soal 18](#18-ttl-15-detik-dan-perubahan-a-record-abbey)
 - [Soal 19](#19-cname-outbound-menuju-domain-eksternal)
 - [Soal 20](#20-persistence-dan-autostart-setelah-restart)
+- [Revisi Nomor 20](#revisi-nomer-20---persistence-dan-autostart-setelah-restart)
 
 ## Struktur Repository dan Penampilan Screenshot
 
@@ -3278,7 +3279,6 @@ ORION HTTP 200
 ADMIN HTTP 401
 ```
 
----
 
 # REVISI NOMER 20 - Persistence dan Autostart Setelah Restart
 
@@ -3288,22 +3288,320 @@ ADMIN HTTP 401
 
 ## A. Analisis Kebutuhan Soal
 
-Nomor 20 meminta seluruh konfigurasi yang telah dibuat pada nomor sebelumnya tetap dapat digunakan setelah node dihentikan dan dinyalakan kembali.
+Nomor 20 meminta seluruh konfigurasi yang telah dibuat pada nomor sebelumnya tetap dapat digunakan setelah node dihentikan dan dinyalakan kembali. Oleh karena itu, pengujian tidak cukup hanya membuktikan bahwa konfigurasi dapat dijalankan secara manual. Kondisi akhir harus menunjukkan bahwa setelah proses `Stop` dan `Start` pada GNS3, service dan konfigurasi utama kembali berfungsi melalui mekanisme autostart/auto-recovery.
 
-Dengan demikian, pengujian Nomor 20 tidak cukup hanya dengan membuktikan bahwa konfigurasi dapat dijalankan secara manual. Kondisi yang harus dipenuhi adalah:
+Kondisi yang harus dipenuhi adalah:
 
 1. Node benar-benar dilakukan `Stop` kemudian `Start` melalui GNS3.
-2. Konfigurasi jaringan tetap kembali setelah restart.
+2. Konfigurasi jaringan kembali setelah restart.
 3. Rootkit kembali berfungsi sebagai router dan NAT.
 4. DNS master `prab` dan DNS slave `tedd` kembali aktif.
 5. Konfigurasi DNS final tetap tersedia setelah restart.
 6. Service Apache, Nginx, dan PHP-FPM pada node web kembali aktif.
-7. Resolver client kembali menggunakan urutan:
-   - `10.66.5.2` (Prab)
-   - `10.66.5.3` (Tedd)
-   - `192.168.122.1`
+7. Resolver client kembali menggunakan urutan `10.66.5.2`, `10.66.5.3`, lalu `192.168.122.1`.
 8. Konfigurasi Nomor 18 tidak dipertahankan sebagai kondisi akhir.
-9. Record `abbey.k05.com` harus kembali menggunakan alamat normal:
+9. Record `abbey.k05.com` kembali menggunakan alamat normal:
 
 ```text
 10.66.3.2
+```
+
+10. Konfigurasi Nomor 19 tetap dipertahankan:
+
+```text
+outbound.k05.com -> http.badssl.com.
+```
+
+11. Setelah proses `Stop -> Start`, `/root/soal_20.sh` dan service tidak dijalankan manual ketika melakukan validasi akhir. Hal ini digunakan untuk membuktikan bahwa recovery benar-benar berjalan melalui mekanisme autostart.
+
+## B. Mekanisme Autostart dan Auto-Recovery
+
+Implementasi final Nomor 20 menggunakan **GNS3 Start Command**, bukan `.bashrc`. Script utama disimpan sebagai:
+
+```text
+/root/soal_20.sh
+```
+
+Pada node GNS3 digunakan Start Command:
+
+```bash
+/bin/bash -lc '/root/soal_20.sh; exec /bin/bash -i'
+```
+
+Dengan mekanisme tersebut, ketika node dinyalakan kembali GNS3 otomatis menjalankan `/root/soal_20.sh`. Script kemudian memulihkan konfigurasi yang diperlukan sesuai hostname node.
+
+Konfigurasi penting yang berpotensi hilang dari runtime container disimpan pada `/root`, terutama:
+
+```text
+/root/persist_dns
+/root/persist_web
+/root/recover_web.sh
+/root/soal_20.sh
+/root/soal_20_nat_watch.sh
+```
+
+## C. Implementasi pada Rootkit
+
+Rootkit harus tetap berfungsi sebagai router pusat setelah restart. Konfigurasi yang dipulihkan meliputi:
+
+```text
+eth0 = 192.168.122.66/24
+default gateway = 192.168.122.1
+eth1 = 10.66.1.1/24
+eth2 = 10.66.2.1/24
+eth3 = 10.66.3.1/24
+eth4 = 10.66.4.1/24
+eth5 = 10.66.5.1/24
+```
+
+Selain alamat interface, script memastikan IPv4 forwarding aktif:
+
+```text
+net.ipv4.ip_forward = 1
+```
+
+serta rule NAT:
+
+```text
+MASQUERADE  10.66.0.0/16 -> eth0
+```
+
+Pada Rootkit digunakan `/root/soal_20_nat_watch.sh` untuk memastikan rule NAT dan FORWARD tetap tersedia apabila state `iptables` sempat ter-reset saat startup container.
+
+Command validasi setelah restart:
+
+```bash
+echo "===== NO20 ROOTKIT AFTER RESTART ====="
+ip -4 -br addr
+
+echo "===== DEFAULT ROUTE ====="
+ip route | head -n 7
+
+echo "===== IP FORWARD ====="
+cat /proc/sys/net/ipv4/ip_forward
+
+echo "===== AUTOSTART NAT WATCH ====="
+pgrep -af soal_20_nat_watch
+
+echo "===== NAT ====="
+iptables -t nat -L POSTROUTING -n -v
+
+echo "===== INTERNET ====="
+ping -c 2 8.8.8.8 | tail -n 2
+```
+
+Hasil pengujian menunjukkan alamat WAN dan LAN kembali aktif, default route tersedia, `ip_forward` bernilai `1`, proses NAT watcher berjalan, rule `MASQUERADE` tersedia, dan Rootkit dapat mengakses `8.8.8.8`.
+
+### Bukti Screenshot Rootkit
+
+![Rootkit autostart setelah restart](assets/20_01_rootkit_autostart_after_restart.png)
+
+Screenshot tersebut membuktikan bahwa konfigurasi interface, routing, IP forwarding, NAT, dan akses internet Rootkit kembali normal setelah restart tanpa konfigurasi manual.
+
+## D. Implementasi pada DNS Prab dan Tedd
+
+Prab berfungsi sebagai DNS master sedangkan Tedd sebagai DNS slave. Konfigurasi DNS final disimpan pada:
+
+```text
+/root/persist_dns/bind
+```
+
+Pada saat startup, `/root/soal_20.sh` melakukan pengecekan terhadap BIND. Jika package BIND tidak tersedia setelah restart container, script melakukan instalasi kembali menggunakan resolver sementara `192.168.122.1`.
+
+Command recovery yang digunakan secara otomatis oleh script meliputi:
+
+```bash
+apt-get -o Acquire::ForceIPv4=true update
+DEBIAN_FRONTEND=noninteractive \
+apt-get -o Acquire::ForceIPv4=true install -y bind9 bind9-utils dnsutils
+```
+
+Setelah BIND tersedia, konfigurasi final dikembalikan dari snapshot:
+
+```bash
+rm -rf /etc/bind
+cp -a /root/persist_dns/bind /etc/bind
+```
+
+Konfigurasi kemudian divalidasi dan daemon dijalankan kembali:
+
+```bash
+named-checkconf
+named-checkzone k05.com /etc/bind/k05/k05.com
+/usr/sbin/named -4 -u bind -c /etc/bind/named.conf
+```
+
+Resolver final pada host non-router dikembalikan menjadi:
+
+```text
+nameserver 10.66.5.2
+nameserver 10.66.5.3
+nameserver 192.168.122.1
+```
+
+Kondisi DNS akhir juga memastikan perubahan sementara pada Nomor 18 tidak dipertahankan:
+
+```text
+abbey.k05.com -> 10.66.3.2
+```
+
+sedangkan konfigurasi Nomor 19 tetap tersedia:
+
+```text
+outbound.k05.com -> http.badssl.com.
+```
+
+## E. Implementasi pada Web Server
+
+Node web yang harus kembali aktif setelah restart adalah:
+
+| Node | Fungsi | Service |
+| --- | --- | --- |
+| `penny` | Reverse proxy / gateway | Apache + PHP-FPM |
+| `abbey` | Reverse proxy / gateway | Nginx |
+| `obladi` | Backend Vault | Apache |
+| `desmond` | Backend Vault | Apache |
+| `oblada` | Backend Core | Nginx + PHP-FPM |
+| `molly` | Backend Core | Nginx + PHP-FPM |
+
+Konfigurasi final web disimpan pada:
+
+```text
+/root/persist_web
+```
+
+sedangkan proses recovery tersedia melalui:
+
+```text
+/root/recover_web.sh
+```
+
+Pada node-node web, `/root/soal_20.sh` otomatis menjalankan:
+
+```bash
+bash /root/recover_web.sh
+```
+
+Recovery tersebut digunakan untuk memastikan package yang diperlukan tersedia, mengembalikan konfigurasi Apache/Nginx/PHP dan `/var/www`, melakukan pengecekan konfigurasi, serta menjalankan service kembali.
+
+## F. Implementasi pada Client
+
+Client terdiri dari `alpha`, `beta`, `gamma`, `delta`, dan `epsilon`. Client tidak membutuhkan daemon server seperti Apache, Nginx, atau BIND. Setelah restart, `/root/soal_20.sh` memastikan IP, default gateway, dan resolver client kembali sesuai konfigurasi final.
+
+Resolver final adalah:
+
+```text
+nameserver 10.66.5.2
+nameserver 10.66.5.3
+nameserver 192.168.122.1
+```
+
+## G. Prosedur Pengujian Autostart
+
+Setelah seluruh script recovery dan Start Command dipasang, dilakukan pengujian restart sebenarnya melalui GNS3:
+
+```text
+Save Project
+    ↓
+Stop All Nodes
+    ↓
+Start Nodes kembali
+```
+
+Urutan startup yang digunakan:
+
+```text
+1. rootkit
+2. prab
+3. tedd
+4. obladi
+5. desmond
+6. oblada
+7. molly
+8. penny
+9. abbey
+10. alpha
+11. beta
+12. gamma
+13. delta
+14. epsilon
+```
+
+Urutan tersebut mengikuti dependency layanan: Rootkit menyediakan routing/NAT, Prab dan Tedd menyediakan DNS, backend web menyediakan service tujuan, Penny dan Abbey bertindak sebagai gateway, kemudian client digunakan untuk validasi akhir.
+
+Setelah seluruh node aktif, `/root/soal_20.sh`, `named`, Apache, maupun Nginx **tidak dijalankan secara manual** sebelum validasi.
+
+## H. Validasi End-to-End dari Alpha Setelah Restart
+
+Setelah semua node kembali aktif, validasi akhir dilakukan dari Alpha menggunakan command berikut:
+
+```bash
+echo "===== NO20 FINAL AFTER RESTART ====="
+
+echo "=== RESOLVER ==="
+grep '^nameserver' /etc/resolv.conf
+
+echo "=== DNS MASTER/SLAVE ==="
+echo "PRAB SERIAL: $(dig @10.66.5.2 k05.com SOA +short | awk '{print $3}')"
+echo "TEDD SERIAL: $(dig @10.66.5.3 k05.com SOA +short | awk '{print $3}')"
+
+echo "=== DNS FINAL ==="
+echo "ABBEY: $(dig @10.66.5.2 abbey.k05.com A +short | tail -n 1)"
+echo "OUTBOUND: $(dig @10.66.5.2 outbound.k05.com CNAME +short)"
+
+echo "=== HTTP SERVICES ==="
+curl -s -o /dev/null -w "WWW      HTTP %{http_code}\n" http://www.k05.com/
+curl -s -o /dev/null -w "STATIC   HTTP %{http_code}\n" http://static.k05.com/
+curl -s -o /dev/null -w "ETERNAL  HTTP %{http_code}\n" http://www.k05.com/eternal/
+curl -s -o /dev/null -w "ORION    HTTP %{http_code}\n" http://static.k05.com/orion/
+curl -s -o /dev/null -w "ADMIN    HTTP %{http_code}\n" http://www.k05.com/admin/
+```
+
+Hasil akhir menunjukkan resolver menggunakan DNS internal, serial SOA Prab dan Tedd sama, Abbey kembali pada koordinat normal, CNAME outbound tetap tersedia, serta seluruh endpoint utama kembali memberikan respons yang sesuai.
+
+Target hasil:
+
+```text
+nameserver 10.66.5.2
+nameserver 10.66.5.3
+nameserver 192.168.122.1
+
+PRAB SERIAL: 2026092808
+TEDD SERIAL: 2026092808
+
+ABBEY: 10.66.3.2
+OUTBOUND: http.badssl.com.
+
+WWW      HTTP 200
+STATIC   HTTP 200
+ETERNAL  HTTP 200
+ORION    HTTP 200
+ADMIN    HTTP 401
+```
+
+Status `401` pada `/admin` merupakan hasil yang benar karena request dilakukan tanpa kredensial dan menunjukkan bahwa Basic Authentication dari Nomor 12 tetap aktif setelah restart.
+
+### Bukti Screenshot Final
+
+![Final end-to-end setelah restart](assets/20_02_alpha_final_after_restart.png)
+
+Screenshot tersebut membuktikan bahwa resolver client kembali normal, DNS master dan slave aktif serta sinkron, kondisi Nomor 18 telah dikembalikan normal, konfigurasi Nomor 19 tetap tersedia, dan service web utama tetap berfungsi setelah restart.
+
+## I. Hasil dan Kesimpulan
+
+Setelah seluruh node dilakukan proses `Stop` dan `Start`, konfigurasi dan service utama kembali berfungsi tanpa menjalankan script konfigurasi atau service secara manual. Rootkit kembali menjalankan routing dan NAT, Prab dan Tedd kembali menjalankan DNS master-slave, service web kembali tersedia, dan resolver client kembali menggunakan DNS internal.
+
+Kondisi eksperimen Nomor 18 telah dikembalikan ke kondisi normal:
+
+```text
+abbey.k05.com -> 10.66.3.2
+```
+
+Konfigurasi Nomor 19 tetap tersedia:
+
+```text
+outbound.k05.com -> http.badssl.com.
+```
+
+Pengujian end-to-end dari Alpha menunjukkan bahwa `www.k05.com`, `static.k05.com`, `/eternal`, `/orion`, dan proteksi `/admin` tetap bekerja setelah restart. Dengan demikian, requirement Nomor 20 mengenai persistence, autostart, dan keberlangsungan konfigurasi setelah node direstart telah terpenuhi.
+
