@@ -3279,3 +3279,31 @@ ADMIN HTTP 401
 ```
 
 ---
+
+# REVISI NOMER 20 - Persistence dan Autostart Setelah Restart
+
+## Soal
+
+> Setelah semua penyelesaian selesai, pastikan semua service dan konfigurasi yang telah dikerjakan dari awal tetap berjalan normal dan berstatus autostart saat node di-restart **(khusus untuk kasus ini, abaikan konfigurasi nomor 18 dan biarkan koordinat kembali normal).**
+
+## A. Analisis Kebutuhan Soal
+
+Nomor 20 meminta seluruh konfigurasi yang telah dibuat pada nomor sebelumnya tetap dapat digunakan setelah node dihentikan dan dinyalakan kembali.
+
+Dengan demikian, pengujian Nomor 20 tidak cukup hanya dengan membuktikan bahwa konfigurasi dapat dijalankan secara manual. Kondisi yang harus dipenuhi adalah:
+
+1. Node benar-benar dilakukan `Stop` kemudian `Start` melalui GNS3.
+2. Konfigurasi jaringan tetap kembali setelah restart.
+3. Rootkit kembali berfungsi sebagai router dan NAT.
+4. DNS master `prab` dan DNS slave `tedd` kembali aktif.
+5. Konfigurasi DNS final tetap tersedia setelah restart.
+6. Service Apache, Nginx, dan PHP-FPM pada node web kembali aktif.
+7. Resolver client kembali menggunakan urutan:
+   - `10.66.5.2` (Prab)
+   - `10.66.5.3` (Tedd)
+   - `192.168.122.1`
+8. Konfigurasi Nomor 18 tidak dipertahankan sebagai kondisi akhir.
+9. Record `abbey.k05.com` harus kembali menggunakan alamat normal:
+
+```text
+10.66.3.2
