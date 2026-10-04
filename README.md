@@ -56,6 +56,7 @@ Format tersebut membuat GitHub merender gambar langsung di halaman README selama
 > **Catatan No.20:** pada inventory screenshot yang diberikan belum terdapat file `20_*.png`. Karena itu laporan tidak membuat tautan gambar palsu untuk No.20. Setelah pengujian post-restart dilakukan, tambahkan screenshot aktual dengan nama yang sudah dicantumkan pada bagian No.20.
 
 
+
 ## Laporan
 
 Domain kelompok yang digunakan adalah `k05.com`. Seluruh script instalasi dan konfigurasi disimpan pada direktori `/root` di node GNS3 yang relevan. Laporan ini menyertakan kembali bunyi soal, command yang dijalankan, konfigurasi, validasi, hasil, dan bukti screenshot untuk setiap nomor.
