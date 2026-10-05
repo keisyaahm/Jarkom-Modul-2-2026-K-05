@@ -46,17 +46,6 @@ Jarkom-Modul-2-2026-K-05-2/
 └── project/
 ```
 
-Seluruh screenshot pada laporan menggunakan format Markdown relatif:
-
-```md
-![Keterangan gambar](assets/nama_file.png)
-```
-
-Format tersebut membuat GitHub merender gambar langsung di halaman README selama nama file dan huruf besar-kecilnya sama persis dengan isi folder `assets`.
-
-> **Catatan No.20:** pada inventory screenshot yang diberikan belum terdapat file `20_*.png`. Karena itu laporan tidak membuat tautan gambar palsu untuk No.20. Setelah pengujian post-restart dilakukan, tambahkan screenshot aktual dengan nama yang sudah dicantumkan pada bagian No.20.
-
-
 
 ## Laporan
 
