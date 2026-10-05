@@ -33,8 +33,6 @@
 
 ## Struktur Repository dan Penampilan Screenshot
 
-Agar semua gambar langsung muncul di GitHub, letakkan file ini sebagai `README.md` di **root repository** dan folder `assets` berada di level yang sama:
-
 ```text
 Jarkom-Modul-2-2026-K-05-2/
 ├── README.md
@@ -50,10 +48,6 @@ Jarkom-Modul-2-2026-K-05-2/
 ## Laporan
 
 Domain kelompok yang digunakan adalah `k05.com`. Seluruh script instalasi dan konfigurasi disimpan pada direktori `/root` di node GNS3 yang relevan. Laporan ini menyertakan kembali bunyi soal, command yang dijalankan, konfigurasi, validasi, hasil, dan bukti screenshot untuk setiap nomor.
-
-> **Catatan validasi:** bukti Nomor 18 fase 1 dan fase 2 yang tersimpan belum secara visual menunjukkan kondisi cache lama sesuai skenario TTL. Nomor 20 juga masih memerlukan bukti post-restart aktual agar dapat dinyatakan sepenuhnya berhasil. Bagian terkait ditulis sesuai bukti yang tersedia dan tidak mengklaim hasil yang belum dibuktikan.
-
-
 ---
 
 # 1. Konfigurasi IP Address dan Default Gateway
